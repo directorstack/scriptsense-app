@@ -220,6 +220,11 @@ const ScriptSenseApp = () => {
   const [selectedTemplate, setSelectedTemplate] = useState('modern');
   const [audienceType, setAudienceType] = useState('investors');
   const [aiEnhancementOptions, setAiEnhancementOptions] = useState({
+const [showEmailCapture, setShowEmailCapture] = useState(false);
+const [exportEmail, setExportEmail] = useState('');
+const [generatedPDF, setGeneratedPDF] = useState(null);
+const [showUpgradeOffer, setShowUpgradeOffer] = useState(false);
+const [emailCaptured, setEmailCaptured] = useState(false);
     loglineOptimization: true,
     synopsisPolish: true,
     genreSpecific: true
@@ -294,6 +299,43 @@ const ScriptSenseApp = () => {
     }
   });
 
+// Handle email submission and download
+const handleEmailSubmission = async (skipEmail = false) => {
+  if (!skipEmail && exportEmail) {
+    // Send email to your backend/newsletter
+    try {
+      // You'll replace this with your actual email collection
+      await fetch('/api/collect-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: exportEmail,
+          filmTitle: formData.projectBasics.filmTitle,
+          genre: formData.projectBasics.genre
+        })
+      });
+      setEmailCaptured(true);
+    } catch (error) {
+      console.log('Email collection failed, continuing with download');
+    }
+  }
+  
+  // Download the PDF
+  if (generatedPDF) {
+    const url = window.URL.createObjectURL(generatedPDF);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${formData.projectBasics.filmTitle || 'pitch-deck'}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
+  
+  // Close email modal and show upgrade offer
+  setShowEmailCapture(false);
+  setShowUpgradeOffer(true);
+};
   const updateFormData = (section, field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -349,9 +391,170 @@ const ScriptSenseApp = () => {
   };
 
   const handleExportAttempt = (type) => {
-    if (userTier === 'free' && type === 'pptx') {
-      setShowPaywall(true);
-      return;
+   const handleExportAttempt = async (type) => {
+  if (type === 'pptx' && userTier === 'free') 
+  {/* Email Capture Modal - Shows after PDF generation */}
+{showEmailCapture && (
+  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="bg-white rounded-2xl p-8 max-w-md w-full border border-slate-200">
+      <div className="text-center mb-6">
+        <div className="w-16 h-16 bg-green-400 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle className="h-8 w-8 text-white" />
+        </div>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">PDF Generated! 🎉</h2>
+        <p className="text-slate-600">Your professional pitch deck is ready to download</p>
+      </div>
+      
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            Enter email to download (optional)
+          </label>
+          <input
+            type="email"
+            value={exportEmail}
+            onChange={(e) => setExportEmail(e.target.value)}
+            placeholder="your@email.com"
+            className="w-full border border-slate-300 rounded-xl px-4 py-3 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+          />
+          <p className="text-xs text-slate-500 mt-1">
+            Get filmmaking tips and updates (we'll never spam you)
+          </p>
+        </div>
+        
+        <button
+          onClick={() => handleEmailSubmission(false)}
+          disabled={!exportEmail}
+          className="w-full bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Download PDF
+        </button>
+        
+        <button
+          onClick={() => handleEmailSubmission(true)}
+          className="w-full text-slate-500 hover:text-slate-700 text-sm"
+        >
+          Skip and download
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Upgrade Offer Modal - Shows after download */}
+{showUpgradeOffer && (
+  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="bg-white rounded-2xl p-8 max-w-lg w-full border border-slate-200">
+      <div className="text-center mb-6">
+        <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Crown className="h-8 w-8 text-white" />
+        </div>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">Love Your Pitch Deck?</h2>
+        <p className="text-slate-600">You just created a professional presentation that would cost $5,000+ from an agency</p>
+      </div>
+      
+      <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-xl p-6 mb-6 border border-emerald-200">
+        <h3 className="font-bold text-emerald-900 mb-3">Upgrade to Pro and get:</h3>
+        <ul className="space-y-2 text-sm text-emerald-800">
+          <li className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-emerald-600" />
+            Remove watermark from all PDFs
+          </li>
+          <li className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-emerald-600" />
+            Export to PowerPoint (.pptx)
+          </li>
+          <li className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-emerald-600" />
+            Save unlimited projects
+          </li>
+          <li className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-emerald-600" />
+            Advanced AI enhancement
+          </li>
+          <li className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-emerald-600" />
+            Priority support
+          </li>
+        </ul>
+      </div>
+      
+      <div className="space-y-3">
+        <button
+          onClick={() => {
+            setShowUpgradeOffer(false);
+            setShowPaywall(true);
+          }}
+          className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-3 rounded-xl font-medium hover:from-emerald-600 hover:to-emerald-700"
+        >
+          Upgrade to Pro - $60
+        </button>
+        
+        <button
+          onClick={() => setShowUpgradeOffer(false)}
+          className="w-full text-slate-500 hover:text-slate-700 text-sm"
+        >
+          Maybe later (keep free version)
+        </button>
+      </div>
+      
+      {emailCaptured && (
+        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-sm text-blue-700 text-center">
+            📧 Thanks! We'll send you filmmaking tips and ScriptSenseAI updates
+          </p>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+     {
+    setShowPaywall(true);
+    return;
+  }
+  
+  if (type === 'pdf') {
+    try {
+      // Generate PDF immediately (no barriers!)
+      const pitchDeckHTML = generatePitchDeckHTML();
+      
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = pitchDeckHTML;
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      document.body.appendChild(tempDiv);
+      
+      const options = {
+        margin: [0.5, 0.5, 0.5, 0.5],
+        filename: `${formData.projectBasics.filmTitle || 'pitch-deck'}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff'
+        },
+        jsPDF: { 
+          unit: 'in', 
+          format: 'a4', 
+          orientation: 'landscape' 
+        }
+      };
+      
+      // Generate PDF blob for later download
+      const pdfBlob = await html2pdf().set(options).from(tempDiv).outputPdf('blob');
+      setGeneratedPDF(pdfBlob);
+      
+      document.body.removeChild(tempDiv);
+      
+      // Show email capture modal
+      setShowEmailCapture(true);
+      
+    } catch (error) {
+      console.error('PDF Export Error:', error);
+      alert('PDF generation failed. Please try again.');
+    }
+  }
+};
     }
     
     if (type === 'pdf') {
