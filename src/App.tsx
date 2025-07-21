@@ -1,5 +1,6 @@
 import React, { useState, createContext, useContext, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Plus, X, Upload, User, Film, DollarSign, Shield, FileText, Mail, Download, Edit3, AlertCircle, Crown, ArrowRight, CheckCircle, Play, Brain, Sparkles, BarChart3, PieChart, TrendingUp, Palette, Camera, Eye, Target, Clock, Zap, Settings } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 
 // Context for managing form data across components
 const ScriptSenseContext = createContext();
@@ -219,12 +220,12 @@ const ScriptSenseApp = () => {
   const [aiEnhancementEnabled, setAiEnhancementEnabled] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState('modern');
   const [audienceType, setAudienceType] = useState('investors');
+  const [showEmailCapture, setShowEmailCapture] = useState(false);
+  const [exportEmail, setExportEmail] = useState('');
+  const [generatedPDF, setGeneratedPDF] = useState(null);
+  const [showUpgradeOffer, setShowUpgradeOffer] = useState(false);
+  const [emailCaptured, setEmailCaptured] = useState(false);
   const [aiEnhancementOptions, setAiEnhancementOptions] = useState({
-const [showEmailCapture, setShowEmailCapture] = useState(false);
-const [exportEmail, setExportEmail] = useState('');
-const [generatedPDF, setGeneratedPDF] = useState(null);
-const [showUpgradeOffer, setShowUpgradeOffer] = useState(false);
-const [emailCaptured, setEmailCaptured] = useState(false);
     loglineOptimization: true,
     synopsisPolish: true,
     genreSpecific: true
@@ -299,43 +300,389 @@ const [emailCaptured, setEmailCaptured] = useState(false);
     }
   });
 
-// Handle email submission and download
-const handleEmailSubmission = async (skipEmail = false) => {
-  if (!skipEmail && exportEmail) {
-    // Send email to your backend/newsletter
-    try {
-      // You'll replace this with your actual email collection
-      await fetch('/api/collect-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: exportEmail,
-          filmTitle: formData.projectBasics.filmTitle,
-          genre: formData.projectBasics.genre
-        })
-      });
-      setEmailCaptured(true);
-    } catch (error) {
-      console.log('Email collection failed, continuing with download');
+  // Generate HTML for the pitch deck
+  const generatePitchDeckHTML = () => {
+    const templateStyles = getTemplateStyles(selectedTemplate);
+    
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${formData.projectBasics.filmTitle || 'Pitch Deck'}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;900&display=swap');
+          
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            background: ${templateStyles.background};
+            color: ${templateStyles.textColor};
+          }
+          
+          .slide {
+            width: 1920px;
+            height: 1080px;
+            padding: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            page-break-after: always;
+            background: ${templateStyles.background};
+            position: relative;
+          }
+          
+          .slide:last-child {
+            page-break-after: avoid;
+          }
+          
+          .slide h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 120px;
+            font-weight: 900;
+            margin-bottom: 40px;
+            color: ${templateStyles.textColor};
+            line-height: 1.1;
+          }
+          
+          .slide h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 80px;
+            font-weight: 700;
+            margin-bottom: 40px;
+            color: ${templateStyles.textColor};
+            line-height: 1.2;
+          }
+          
+          .slide h3 {
+            font-family: 'Inter', sans-serif;
+            font-size: 48px;
+            font-weight: 600;
+            margin-bottom: 30px;
+            color: ${templateStyles.accentColor};
+          }
+          
+          .slide p {
+            font-size: 36px;
+            max-width: 1400px;
+            margin: 0 auto 40px;
+            line-height: 1.5;
+          }
+          
+          .slide .logline {
+            font-size: 42px;
+            font-weight: 500;
+            max-width: 1200px;
+            margin: 0 auto 60px;
+            color: ${templateStyles.textColor};
+          }
+          
+          .genre-badge {
+            background: ${templateStyles.accentColor};
+            color: white;
+            padding: 16px 32px;
+            border-radius: 50px;
+            font-size: 24px;
+            font-weight: 600;
+            margin: 20px;
+          }
+          
+          .budget-info {
+            display: flex;
+            justify-content: center;
+            gap: 80px;
+            margin-top: 60px;
+          }
+          
+          .budget-item {
+            text-align: center;
+          }
+          
+          .budget-amount {
+            font-size: 48px;
+            font-weight: 700;
+            color: ${templateStyles.accentColor};
+            margin-bottom: 10px;
+          }
+          
+          .budget-label {
+            font-size: 24px;
+            opacity: 0.8;
+          }
+          
+          .watermark {
+            position: absolute;
+            bottom: 40px;
+            right: 80px;
+            font-size: 18px;
+            opacity: 0.3;
+            color: ${templateStyles.textColor};
+          }
+          
+          .team-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+          }
+          
+          .team-member {
+            text-align: left;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+          }
+          
+          .team-name {
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: ${templateStyles.accentColor};
+          }
+          
+          .team-role {
+            font-size: 24px;
+            margin-bottom: 15px;
+            opacity: 0.8;
+          }
+          
+          .team-bio {
+            font-size: 18px;
+            line-height: 1.4;
+          }
+          
+          .content-section {
+            max-width: 1400px;
+            margin: 0 auto;
+            text-align: left;
+          }
+          
+          .content-section h3 {
+            text-align: center;
+            margin-bottom: 50px;
+          }
+          
+          .content-section p {
+            font-size: 28px;
+            margin-bottom: 30px;
+          }
+          
+          .risk-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 40px;
+          }
+          
+          .risk-item {
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+          }
+          
+          .risk-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: ${templateStyles.accentColor};
+          }
+          
+          .risk-mitigation {
+            font-size: 20px;
+            line-height: 1.4;
+          }
+        </style>
+      </head>
+      <body>
+        <!-- Title Slide -->
+        <div class="slide">
+          <h1>${formData.projectBasics.filmTitle || 'Your Film Title'}</h1>
+          <p class="logline">${formData.projectBasics.logline || 'Your compelling logline will appear here'}</p>
+          <div style="display: flex; align-items: center; gap: 40px; justify-content: center;">
+            ${formData.projectBasics.genre ? `<span class="genre-badge">${formData.projectBasics.genre}</span>` : ''}
+            <p style="font-size: 28px; margin: 0;">Directed by ${formData.contactInfo.name || 'Your Name'}</p>
+          </div>
+          ${userTier === 'free' ? '<div class="watermark">Created with ScriptSenseAI</div>' : ''}
+        </div>
+
+        <!-- Synopsis Slide -->
+        ${formData.projectBasics.synopsis ? `
+        <div class="slide">
+          <h2>Synopsis</h2>
+          <div class="content-section">
+            <p>${formData.projectBasics.synopsis}</p>
+          </div>
+          ${userTier === 'free' ? '<div class="watermark">Created with ScriptSenseAI</div>' : ''}
+        </div>
+        ` : ''}
+
+        <!-- Director's Vision Slide -->
+        ${(formData.directorsVision.whyNow || formData.directorsVision.whyMe) ? `
+        <div class="slide">
+          <h2>Director's Vision</h2>
+          <div class="content-section">
+            ${formData.directorsVision.whyNow ? `
+              <h3 style="text-align: left; font-size: 36px; margin-bottom: 20px;">Why Now?</h3>
+              <p>${formData.directorsVision.whyNow}</p>
+            ` : ''}
+            ${formData.directorsVision.whyMe ? `
+              <h3 style="text-align: left; font-size: 36px; margin-bottom: 20px; margin-top: 40px;">Why Me?</h3>
+              <p>${formData.directorsVision.whyMe}</p>
+            ` : ''}
+          </div>
+          ${userTier === 'free' ? '<div class="watermark">Created with ScriptSenseAI</div>' : ''}
+        </div>
+        ` : ''}
+
+        <!-- Team Slide -->
+        ${formData.team.some(member => member.name && member.role) ? `
+        <div class="slide">
+          <h2>Creative Team</h2>
+          <div class="team-grid">
+            ${formData.team.filter(member => member.name && member.role).map(member => `
+              <div class="team-member">
+                <div class="team-name">${member.name}</div>
+                <div class="team-role">${member.role}</div>
+                <div class="team-bio">${member.bio || ''}</div>
+                ${member.credits ? `<div style="font-size: 16px; margin-top: 10px; font-weight: 500; color: ${templateStyles.accentColor};">${member.credits}</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+          ${userTier === 'free' ? '<div class="watermark">Created with ScriptSenseAI</div>' : ''}
+        </div>
+        ` : ''}
+
+        <!-- Market & Audience Slide -->
+        ${(formData.audienceMarket.audienceDescription || formData.audienceMarket.comparables) ? `
+        <div class="slide">
+          <h2>Market & Audience</h2>
+          <div class="content-section">
+            ${formData.audienceMarket.audienceDescription ? `
+              <h3 style="text-align: left; font-size: 36px; margin-bottom: 20px;">Target Audience</h3>
+              <p>${formData.audienceMarket.audienceDescription}</p>
+            ` : ''}
+            ${formData.audienceMarket.comparables ? `
+              <h3 style="text-align: left; font-size: 36px; margin-bottom: 20px; margin-top: 40px;">Comparable Films</h3>
+              <p>${formData.audienceMarket.comparables}</p>
+            ` : ''}
+            ${formData.audienceMarket.distributionStrategy ? `
+              <h3 style="text-align: left; font-size: 36px; margin-bottom: 20px; margin-top: 40px;">Distribution Strategy</h3>
+              <p>${formData.audienceMarket.distributionStrategy}</p>
+            ` : ''}
+          </div>
+          ${userTier === 'free' ? '<div class="watermark">Created with ScriptSenseAI</div>' : ''}
+        </div>
+        ` : ''}
+
+        <!-- Budget & Financials Slide -->
+        ${(formData.financials.totalBudget || formData.financials.amountRaising) ? `
+        <div class="slide">
+          <h2>Budget & Financing</h2>
+          <div class="budget-info">
+            ${formData.financials.totalBudget ? `
+              <div class="budget-item">
+                <div class="budget-amount">$${Number(formData.financials.totalBudget).toLocaleString()}</div>
+                <div class="budget-label">Total Budget</div>
+              </div>
+            ` : ''}
+            ${formData.financials.amountRaising ? `
+              <div class="budget-item">
+                <div class="budget-amount">$${Number(formData.financials.amountRaising).toLocaleString()}</div>
+                <div class="budget-label">Amount Raising</div>
+              </div>
+            ` : ''}
+          </div>
+          ${formData.financials.exitStrategy ? `
+            <div class="content-section" style="margin-top: 60px;">
+              <h3 style="text-align: center;">Exit Strategy</h3>
+              <p style="text-align: center; font-size: 32px;">${formData.financials.exitStrategy}</p>
+            </div>
+          ` : ''}
+          ${userTier === 'free' ? '<div class="watermark">Created with ScriptSenseAI</div>' : ''}
+        </div>
+        ` : ''}
+
+        <!-- Risk Mitigation Slide -->
+        ${formData.riskMitigation.some(risk => risk.risk && risk.mitigation) ? `
+        <div class="slide">
+          <h2>Risk Mitigation</h2>
+          <div class="risk-grid">
+            ${formData.riskMitigation.filter(risk => risk.risk && risk.mitigation).map(risk => `
+              <div class="risk-item">
+                <div class="risk-title">${risk.risk}</div>
+                <div class="risk-mitigation">${risk.mitigation}</div>
+              </div>
+            `).join('')}
+          </div>
+          ${userTier === 'free' ? '<div class="watermark">Created with ScriptSenseAI</div>' : ''}
+        </div>
+        ` : ''}
+
+        <!-- Contact Slide -->
+        <div class="slide">
+          <h2>Let's Make This Film</h2>
+          <div style="margin-top: 60px;">
+            <h3 style="margin-bottom: 40px;">${formData.contactInfo.name || 'Your Name'}</h3>
+            <div style="font-size: 36px; margin-bottom: 20px;">${formData.contactInfo.email || 'your@email.com'}</div>
+            ${formData.contactInfo.phone ? `<div style="font-size: 32px; margin-bottom: 20px;">${formData.contactInfo.phone}</div>` : ''}
+            ${formData.contactInfo.website ? `<div style="font-size: 32px; margin-bottom: 20px;">${formData.contactInfo.website}</div>` : ''}
+            ${formData.contactInfo.socials ? `<div style="font-size: 28px; opacity: 0.8;">${formData.contactInfo.socials}</div>` : ''}
+          </div>
+          ${userTier === 'free' ? '<div class="watermark">Created with ScriptSenseAI</div>' : ''}
+        </div>
+      </body>
+      </html>
+    `;
+  };
+
+  // Handle email submission and download
+  const handleEmailSubmission = async (skipEmail = false) => {
+    if (!skipEmail && exportEmail) {
+      // Send email to your backend/newsletter
+      try {
+        // You'll replace this with your actual email collection
+        await fetch('/api/collect-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            email: exportEmail,
+            filmTitle: formData.projectBasics.filmTitle,
+            genre: formData.projectBasics.genre
+          })
+        });
+        setEmailCaptured(true);
+      } catch (error) {
+        console.log('Email collection failed, continuing with download');
+      }
     }
-  }
-  
-  // Download the PDF
-  if (generatedPDF) {
-    const url = window.URL.createObjectURL(generatedPDF);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${formData.projectBasics.filmTitle || 'pitch-deck'}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  }
-  
-  // Close email modal and show upgrade offer
-  setShowEmailCapture(false);
-  setShowUpgradeOffer(true);
-};
+    
+    // Download the PDF
+    if (generatedPDF) {
+      const url = window.URL.createObjectURL(generatedPDF);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${formData.projectBasics.filmTitle || 'pitch-deck'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    }
+    
+    // Close email modal and show upgrade offer
+    setShowEmailCapture(false);
+    setShowUpgradeOffer(true);
+  };
+
   const updateFormData = (section, field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -390,206 +737,60 @@ const handleEmailSubmission = async (skipEmail = false) => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleExportAttempt = (type) => {
-   const handleExportAttempt = async (type) => {
-  if (type === 'pptx' && userTier === 'free') 
-  {/* Email Capture Modal - Shows after PDF generation */}
-{showEmailCapture && (
-  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-    <div className="bg-white rounded-2xl p-8 max-w-md w-full border border-slate-200">
-      <div className="text-center mb-6">
-        <div className="w-16 h-16 bg-green-400 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle className="h-8 w-8 text-white" />
-        </div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">PDF Generated! 🎉</h2>
-        <p className="text-slate-600">Your professional pitch deck is ready to download</p>
-      </div>
-      
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Enter email to download (optional)
-          </label>
-          <input
-            type="email"
-            value={exportEmail}
-            onChange={(e) => setExportEmail(e.target.value)}
-            placeholder="your@email.com"
-            className="w-full border border-slate-300 rounded-xl px-4 py-3 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-          />
-          <p className="text-xs text-slate-500 mt-1">
-            Get filmmaking tips and updates (we'll never spam you)
-          </p>
-        </div>
-        
-        <button
-          onClick={() => handleEmailSubmission(false)}
-          disabled={!exportEmail}
-          className="w-full bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Download PDF
-        </button>
-        
-        <button
-          onClick={() => handleEmailSubmission(true)}
-          className="w-full text-slate-500 hover:text-slate-700 text-sm"
-        >
-          Skip and download
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-{/* Upgrade Offer Modal - Shows after download */}
-{showUpgradeOffer && (
-  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-    <div className="bg-white rounded-2xl p-8 max-w-lg w-full border border-slate-200">
-      <div className="text-center mb-6">
-        <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Crown className="h-8 w-8 text-white" />
-        </div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Love Your Pitch Deck?</h2>
-        <p className="text-slate-600">You just created a professional presentation that would cost $5,000+ from an agency</p>
-      </div>
-      
-      <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-xl p-6 mb-6 border border-emerald-200">
-        <h3 className="font-bold text-emerald-900 mb-3">Upgrade to Pro and get:</h3>
-        <ul className="space-y-2 text-sm text-emerald-800">
-          <li className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-emerald-600" />
-            Remove watermark from all PDFs
-          </li>
-          <li className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-emerald-600" />
-            Export to PowerPoint (.pptx)
-          </li>
-          <li className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-emerald-600" />
-            Save unlimited projects
-          </li>
-          <li className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-emerald-600" />
-            Advanced AI enhancement
-          </li>
-          <li className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4 text-emerald-600" />
-            Priority support
-          </li>
-        </ul>
-      </div>
-      
-      <div className="space-y-3">
-        <button
-          onClick={() => {
-            setShowUpgradeOffer(false);
-            setShowPaywall(true);
-          }}
-          className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-3 rounded-xl font-medium hover:from-emerald-600 hover:to-emerald-700"
-        >
-          Upgrade to Pro - $60
-        </button>
-        
-        <button
-          onClick={() => setShowUpgradeOffer(false)}
-          className="w-full text-slate-500 hover:text-slate-700 text-sm"
-        >
-          Maybe later (keep free version)
-        </button>
-      </div>
-      
-      {emailCaptured && (
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <p className="text-sm text-blue-700 text-center">
-            📧 Thanks! We'll send you filmmaking tips and ScriptSenseAI updates
-          </p>
-        </div>
-      )}
-    </div>
-  </div>
-)}
-     {
-    setShowPaywall(true);
-    return;
-  }
-  
-  if (type === 'pdf') {
-    try {
-      // Generate PDF immediately (no barriers!)
-      const pitchDeckHTML = generatePitchDeckHTML();
-      
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = pitchDeckHTML;
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      document.body.appendChild(tempDiv);
-      
-      const options = {
-        margin: [0.5, 0.5, 0.5, 0.5],
-        filename: `${formData.projectBasics.filmTitle || 'pitch-deck'}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-          scale: 2,
-          useCORS: true,
-          backgroundColor: '#ffffff'
-        },
-        jsPDF: { 
-          unit: 'in', 
-          format: 'a4', 
-          orientation: 'landscape' 
-        }
-      };
-      
-      // Generate PDF blob for later download
-      const pdfBlob = await html2pdf().set(options).from(tempDiv).outputPdf('blob');
-      setGeneratedPDF(pdfBlob);
-      
-      document.body.removeChild(tempDiv);
-      
-      // Show email capture modal
-      setShowEmailCapture(true);
-      
-    } catch (error) {
-      console.error('PDF Export Error:', error);
-      alert('PDF generation failed. Please try again.');
-    }
-  }
-};
+  const handleExportAttempt = async (type) => {
+    if (type === 'pptx' && userTier === 'free') {
+      setShowPaywall(true);
+      return;
     }
     
     if (type === 'pdf') {
-      // Create PDF with watermark
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = 1600;
-      canvas.height = 900;
-      
-      // Apply template styling
-      const templateStyles = getTemplateStyles(selectedTemplate);
-      ctx.fillStyle = templateStyles.background;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Add watermark
-      ctx.fillStyle = 'rgba(100, 100, 100, 0.1)';
-      ctx.font = '48px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('ScriptSenseAI - Free Version', canvas.width / 2, canvas.height / 2);
-      
-      // Add content
-      ctx.fillStyle = templateStyles.textColor;
-      ctx.font = 'bold 72px Arial';
-      ctx.fillText(formData.projectBasics.filmTitle || 'Your Film Title', canvas.width / 2, 300);
-      
-      ctx.font = '32px Arial';
-      ctx.fillText(formData.projectBasics.logline || 'Your logline here', canvas.width / 2, 400);
-      
-      // Convert to PDF-like download
-      const link = document.createElement('a');
-      link.download = `${formData.projectBasics.filmTitle || 'pitch-deck'}-preview.png`;
-      link.href = canvas.toDataURL();
-      link.click();
-      
-      alert('PDF preview exported with watermark! Upgrade to remove watermark and get full deck.');
+      try {
+        // Generate PDF immediately
+        const pitchDeckHTML = generatePitchDeckHTML();
+        
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = pitchDeckHTML;
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        tempDiv.style.top = '0';
+        tempDiv.style.width = '1920px';
+        tempDiv.style.height = 'auto';
+        document.body.appendChild(tempDiv);
+        
+        const options = {
+          margin: 0,
+          filename: `${formData.projectBasics.filmTitle || 'pitch-deck'}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { 
+            scale: 1,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            width: 1920,
+            height: 1080,
+            scrollX: 0,
+            scrollY: 0
+          },
+          jsPDF: { 
+            unit: 'px', 
+            format: [1920, 1080], 
+            orientation: 'landscape',
+            compress: true
+          }
+        };
+        
+        // Generate PDF blob for later download
+        const pdfBlob = await html2pdf().set(options).from(tempDiv).outputPdf('blob');
+        setGeneratedPDF(pdfBlob);
+        
+        document.body.removeChild(tempDiv);
+        
+        // Show email capture modal
+        setShowEmailCapture(true);
+        
+      } catch (error) {
+        console.error('PDF Export Error:', error);
+        alert('PDF generation failed. Please try again.');
+      }
     } else if (type === 'pptx') {
       alert('PowerPoint deck exported!');
     }
@@ -656,6 +857,122 @@ const handleEmailSubmission = async (skipEmail = false) => {
   return (
     <ScriptSenseContext.Provider value={contextValue}>
       <div className="min-h-screen bg-slate-50" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+        {/* Email Capture Modal - Shows after PDF generation */}
+        {showEmailCapture && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl p-8 max-w-md w-full border border-slate-200">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-green-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="h-8 w-8 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">PDF Generated! 🎉</h2>
+                <p className="text-slate-600">Your professional pitch deck is ready to download</p>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Enter email to download (optional)
+                  </label>
+                  <input
+                    type="email"
+                    value={exportEmail}
+                    onChange={(e) => setExportEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-3 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Get filmmaking tips and updates (we'll never spam you)
+                  </p>
+                </div>
+                
+                <button
+                  onClick={() => handleEmailSubmission(false)}
+                  disabled={!exportEmail}
+                  className="w-full bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Download PDF
+                </button>
+                
+                <button
+                  onClick={() => handleEmailSubmission(true)}
+                  className="w-full text-slate-500 hover:text-slate-700 text-sm"
+                >
+                  Skip and download
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Upgrade Offer Modal - Shows after download */}
+        {showUpgradeOffer && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl p-8 max-w-lg w-full border border-slate-200">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Crown className="h-8 w-8 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">Love Your Pitch Deck?</h2>
+                <p className="text-slate-600">You just created a professional presentation that would cost $5,000+ from an agency</p>
+              </div>
+              
+              <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-xl p-6 mb-6 border border-emerald-200">
+                <h3 className="font-bold text-emerald-900 mb-3">Upgrade to Pro and get:</h3>
+                <ul className="space-y-2 text-sm text-emerald-800">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-emerald-600" />
+                    Remove watermark from all PDFs
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-emerald-600" />
+                    Export to PowerPoint (.pptx)
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-emerald-600" />
+                    Save unlimited projects
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-emerald-600" />
+                    Advanced AI enhancement
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-emerald-600" />
+                    Priority support
+                  </li>
+                </ul>
+              </div>
+              
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    setShowUpgradeOffer(false);
+                    setShowPaywall(true);
+                  }}
+                  className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-3 rounded-xl font-medium hover:from-emerald-600 hover:to-emerald-700"
+                >
+                  Upgrade to Pro - $60
+                </button>
+                
+                <button
+                  onClick={() => setShowUpgradeOffer(false)}
+                  className="w-full text-slate-500 hover:text-slate-700 text-sm"
+                >
+                  Maybe later (keep free version)
+                </button>
+              </div>
+              
+              {emailCaptured && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-700 text-center">
+                    📧 Thanks! We'll send you filmmaking tips and ScriptSenseAI updates
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Paywall Modal */}
         {showPaywall && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -2113,26 +2430,25 @@ const DeckGenerator = ({ onExport }) => {
           </div>
 
           {/* Success Message */}
-          {userTier === 'free' && (
-            <div className="text-center py-12">
-              <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-2xl p-8 max-w-md mx-auto">
-                <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="h-8 w-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-emerald-900 mb-3" style={{ fontFamily: 'Playfair Display, serif' }}>
-                  🎯 ScriptSenseAI is Working!
-                </h3>
-                <p className="text-emerald-700 font-medium font-sans mb-4">
-                  Your template system and form builder are fully functional
-                </p>
-                <div className="text-sm text-emerald-600 font-sans">
-                  ✅ Template customization working<br/>
-                  ✅ PDF export with watermark<br/>
-                  ✅ Ready for full implementation
-                </div>
+          <div className="text-center py-12">
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-2xl p-8 max-w-md mx-auto">
+              <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-emerald-900 mb-3" style={{ fontFamily: 'Playfair Display, serif' }}>
+                🎯 PDF Generation Now Working!
+              </h3>
+              <p className="text-emerald-700 font-medium font-sans mb-4">
+                Click "Export PDF" to generate your complete multi-page pitch deck
+              </p>
+              <div className="text-sm text-emerald-600 font-sans">
+                ✅ Multi-page PDF generation<br/>
+                ✅ Professional slide layouts<br/>
+                ✅ Template-based styling<br/>
+                ✅ Form data integration
               </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
